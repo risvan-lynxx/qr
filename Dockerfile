@@ -1,0 +1,10 @@
+FROM node:slim
+
+WORKDIR /qr
+COPY . .
+RUN node index.js
+
+ARG PORT
+EXPOSE ${PORT:-3000}
+
+CMD ["node index.js"]
