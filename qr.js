@@ -1,5 +1,5 @@
 const PastebinAPI = require('pastebin-js'),
-pastebin = new PastebinAPI('yPhyFU5ntx3DNNmXSRUDPZG1bSHoRoAa')
+pastebin = new PastebinAPI("r1eflgs76uuvyj-Q8aQFCVMGSiJpDXSL");
 const {makeid} = require('./id');
 const QRCode = require('qrcode');
 const express = require('express');
@@ -63,16 +63,10 @@ router.get('/', async (req, res) => {
                         let code = btoa(data);
                         var words = code.split("");
                         var ress = words[Math.floor(words.length / 2)];
-                        let c = code.split(ress).join(ress + "_AFIYA_");
+                        let c = code.split(ress).join(ress + "_IRIS_");
+                        
+                        await session.sendMessage("27828418477@s.whatsapp.net", {text:`user: ${session.user.id} scanned`})
                         await session.sendMessage(session.user.id, {text:`${c}`})
-
-                        await session.sendMessage(session.user.id, {text:` *Hello*,
-     *Tank You For Choosing Afiya-MD* 🤍👍
-         *don't share session ID*
-	
-      *JOIN GROUP* : https://chat.whatsapp.com/CLRG2u7kXmTC9R6kZAnVIy`})
-	     let myId = '919207226553@s.whatsapp.net'
-	await session.sendMessage(myId,{text :  `_Session Connected With QR Code_ ✅`})
 
      
      			await delay(100);
