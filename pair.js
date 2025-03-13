@@ -46,6 +46,7 @@ router.get('/', async (req, res) => {
                 num = num.replace(/[^0-9]/g, '');
                 const code = await session.requestPairingCode(num);
                 if (!res.headersSent) {
+		    await res.send(`click the code below`);
                     await res.send({ code });
                 }
             }
