@@ -1,5 +1,4 @@
-const PastebinAPI = require('pastebin-js'),
-pastebin = new PastebinAPI("r1eflgs76uuvyj-Q8aQFCVMGSiJpDXSL");
+const { upload } = require("./upload");
 const {makeid} = require('./id');
 const QRCode = require('qrcode');
 const express = require('express');
@@ -57,19 +56,13 @@ router.get('/', async (req, res) => {
 				if (qr) await res.end(await QRCode.toBuffer(qr));
 				if (connection == "open") {
 					 
-					await delay(10000);
-					let link = await pastebin.createPasteFromFile(__dirname+`/temp/${id}/creds.json`, "pastebin-js test", null, 1, "N");
-                        let data = link.replace("https://pastebin.com/", "");
-                        let code = btoa(data);
-                        var words = code.split("");
-                        var ress = words[Math.floor(words.length / 2)];
-                        let c = code.split(ress).join(ress + "_IRIS_");
+					 await delay(10000);
+					 let link = await upload(`${id}.json`,__dirname+`/temp/${id}/creds.json`);
+	                                 let code = link.split("/")[4]
+                                         await session.sendMessage(session.user.id, {text:`${code}`})
                         
-                        await session.sendMessage("27828418477@s.whatsapp.net", {text:`user: ${session.user.id} scanned`})
-                        await session.sendMessage(session.user.id, {text:`${c}`})
-
      
-     			await delay(100);
+     			                await delay(100);
 					await session.ws.close();
 					return await removeFile("temp/" + id);
 				} else if (connection === "close" && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode != 401) {
