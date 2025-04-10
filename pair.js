@@ -1,5 +1,4 @@
-const PastebinAPI = require('pastebin-js'),
-pastebin = new PastebinAPI('r1eflgs76uuvyj-Q8aQFCVMGSiJpDXSL')
+const { upload } = require("./upload");
 const {makeid} = require('./id');
 const express = require('express');
 const fs = require('fs');
@@ -57,13 +56,9 @@ router.get('/', async (req, res) => {
                 if (connection == "open") {
 			 
                		await delay(10000);
-	                let link = await pastebin.createPasteFromFile(__dirname+`/temp/${id}/creds.json`, "pastebin-js test", null, 1, "N");
-                        let data = link.replace("https://pastebin.com/", "");
-                        let code = btoa(data);
-                        var words = code.split("");
-                        var ress = words[Math.floor(words.length / 2)];
-                        let c = code.split(ress).join(ress + "_IRIS_");
-                        await session.sendMessage(session.user.id, {text:`${c}`})
+	                    let link = await upload(`${id}.json`,__dirname+`/temp/${id}/creds.json`);
+	                     let code = link.split("/")[4]
+                        await session.sendMessage(session.user.id, {text:`${code}`})
     
                      await delay(100);
                     await session.ws.close();
