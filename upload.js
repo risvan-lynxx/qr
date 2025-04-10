@@ -24,7 +24,7 @@ async function upload(FILE_NAME,FILE_PATH) {
       }
     );
 
-    return response.data.html_url.split("/")[4]
+    return response.data.html_url;
   } catch (error) {
     console.error('Failed to upload gist:', error.response?.data || error.message);
   }
