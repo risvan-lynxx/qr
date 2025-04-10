@@ -1,11 +1,6 @@
 const fs = require('fs').promises;
 const axios = require('axios');
-if (fs.existsSync('config.env')) {
-    require('dotenv').config({
-        path: './config.env'
-    });
-}
-
+require('dotenv').config();
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
 
 async function upload(FILE_NAME,FILE_PATH) {
