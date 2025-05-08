@@ -1,25 +1,22 @@
-const { upload } = require("./upload");
+const axios = require('axios');
+const { create } = require('./session');
 const { makeid } = require('./id');
 const express = require('express');
 const fs = require('fs');
 let router = express.Router();
 const pino = require("pino");
-const path = require('path');
 const {
     default: makeWASocket,
     useMultiFileAuthState,
     delay,
     Browsers,
-    fetchLatestBaileysVersion,
     makeCacheableSignalKeyStore
 } = require("@whiskeysockets/baileys");
 
 function removeFile(FilePath) {
     if (!fs.existsSync(FilePath)) return false;
     fs.rmSync(FilePath, { recursive: true, force: true });
-}
-
-const { readFile } = require("node:fs/promises");
+};
 
 router.get('/', async (req, res) => {
     const id = makeid();
@@ -31,12 +28,12 @@ router.get('/', async (req, res) => {
             let session = makeWASocket({
                 auth: {
                     creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
+                    keys: makeCacheableSignalKeyStore(state.keys, pino({level: "fatal"}).child({level: "fatal"})),
                 },
                 printQRInTerminal: false,
-                logger: pino({ level: "fatal" }).child({ level: "fatal" }),
+                logger: pino({level: "fatal"}).child({level: "fatal"}),
                 browser: Browsers.macOS("Safari"),
-            });
+             });
 
             if (!session.authState.creds.registered) {
                 await delay(1500);
@@ -51,20 +48,20 @@ router.get('/', async (req, res) => {
 
             session.ev.on("connection.update", async (s) => {
                 const { connection, lastDisconnect } = s;
+
                 if (connection == "open") {
-                    let link = await upload(`${id}.json`, __dirname + `/temp/${id}/creds.json`);
-                    let code = link.split("/")[4];
-                    await session.sendMessage(session.user.id, { text: `${code}` });
-    
+                    await delay(5000);
+                    await delay(5000);
+
+                    const jsonData = await fs.promises.readFile(`${__dirname}/temp/${id}/creds.json`, 'utf-8');     
+                    const { id: data } = await create(jsonData);
+                    await session.sendMessage(session.user.id, { text: 'zen~' + data });
+
+                    await delay(100);
                     await session.ws.close();
-                    await removeFile(`./temp/${id}`);
-                    process.exit(0);
-                } else if (
-                    connection === "close" &&
-                    lastDisconnect &&
-                    lastDisconnect.error &&
-                    lastDisconnect.error.output.statusCode != 401
-                ) {
+                    return await removeFile('./temp/' + id);
+                } else if (connection === "close" && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode != 401) {
+                    await delay(10000);
                     getPaire();
                 }
             });
@@ -77,8 +74,7 @@ router.get('/', async (req, res) => {
         }
     }
 
-   getPaire();
+    return await getPaire();
 });
 
 module.exports = router;
-
